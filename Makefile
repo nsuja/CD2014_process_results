@@ -1,3 +1,7 @@
+DATASET_ROOT_PATH=/home/ubuntu/datasets/CD2014/
+DATASET_PATH=$(DATASET_ROOT_PATH)/dataset
+RESULTS_PATH=$(DATASET_ROOT_PATH)/results
+
 COMPARATOR_SRC=cpp_code/Comparator.cpp \
 			   cpp_code/mainComparator.cpp \
 			   cpp_code/makefile \
@@ -12,8 +16,12 @@ COMPARATOR_SRC=cpp_code/Comparator.cpp \
 			   cpp_code/YourMethod.h
 OUTPUT=./exe/comparator
 
-.PHONY: all
+.PHONY: all run
 all: $(OUTPUT)
+
+run: $(OUTPUT)
+	python3 processFolder.py  $(DATASET_PATH) $(RESULTS_PATH)
+
 
 $(OUTPUT): $(COMPARATOR_SRC)
 	make -C cpp_code comparator
