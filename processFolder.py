@@ -103,8 +103,6 @@ def isValidRootFolder(path):
     """A valid root folder must have the six categories"""
     categories = set(['dynamicBackground', 'baseline', 'cameraJitter', 'intermittentObjectMotion', 'shadow', 'thermal', 'badWeather', 'lowFramerate', 'nightVideos', 'PTZ', 'turbulence'])
     folders = set(getDirectories(path))
-    print(folders)
-    print(categories)
     return len(categories.intersection(folders)) == 11
 
 def isValidVideoFolder(path):
