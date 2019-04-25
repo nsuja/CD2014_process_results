@@ -47,9 +47,9 @@ def main():
 
 def processFolder(datasetPath, binaryRootPath):
     """Call your executable for all sequences in all categories."""
-    #stats = Stats(datasetPath)  #STATS
+    stats = Stats(datasetPath)  #STATS
     for category in getDirectories(datasetPath):
-        #stats.addCategories(category)  #STATS
+        stats.addCategories(category)  #STATS
         
         categoryPath = os.path.join(datasetPath, category)
         os.mkdir(os.path.join(binaryRootPath, category))
@@ -59,35 +59,35 @@ def processFolder(datasetPath, binaryRootPath):
             binaryPath = os.path.join(binaryRootPath, category, video)
             if isValidVideoFolder(videoPath):
                 processVideoFolder(videoPath, binaryPath)            
-                #confusionMatrix = compareWithGroungtruth(videoPath, binaryPath)  #STATS
+                confusionMatrix = compareWithGroungtruth(videoPath, binaryPath)  #STATS
                 
-                #stats.update(category, video, confusionMatrix)  #STATS
-        #stats.writeCategoryResult(category)  #STATS
-    #stats.writeOverallResults()  #STATS
+                stats.update(category, video, confusionMatrix)  #STATS
+        stats.writeCategoryResult(category)  #STATS
+    stats.writeOverallResults()  #STATS
 
 def processVideoFolder(videoPath, binaryPath):
     """Call your executable on a particular sequence."""
     os.mkdir(binaryPath);
-    retcode = call([os.path.join('exe', 'TODO.exe'),
-                    videoPath, binaryPath],
-                   shell=True)
+    print(videoPath)
+    print(binaryPath)
+    retcode = call(['/home/ubuntu/sandbox/frame_difference/build/FrameDifferenceTest', videoPath, binaryPath], shell=False)
 
 def compareWithGroungtruth(videoPath, binaryPath):
     """Compare your binaries with the groundtruth and return the confusion matrix"""
     statFilePath = os.path.join(videoPath, 'stats.txt')
     deleteIfExists(statFilePath)
 
-    retcode = call([os.path.join('exe', 'comparator.exe'),
+    retcode = call([os.path.join('exe', 'comparator'),
                     videoPath, binaryPath],
-                   shell=True)
+                   shell=False)
     
     return readCMFile(statFilePath)
 
 def readCMFile(filePath):
     """Read the file, so we can compute stats for video, category and overall."""
-	if not os.path.exists(filePath):
-		print("The file " + filePath + " doesn't exist.\nIt means there was an error calling the comparator.")
-		raise Exception('error')
+    if not os.path.exists(filePath):
+        print("The file " + filePath + " doesn't exist.\nIt means there was an error calling the comparator.")
+        raise Exception('error')
 	
     with open(filePath) as f:
         for line in f.readlines():
@@ -103,7 +103,9 @@ def isValidRootFolder(path):
     """A valid root folder must have the six categories"""
     categories = set(['dynamicBackground', 'baseline', 'cameraJitter', 'intermittentObjectMotion', 'shadow', 'thermal', 'badWeather', 'lowFramerate', 'nightVideos', 'PTZ', 'turbulence'])
     folders = set(getDirectories(path))
-    return len(categories.intersection(folders)) == 6
+    print(folders)
+    print(categories)
+    return len(categories.intersection(folders)) == 11
 
 def isValidVideoFolder(path):
     """A valid video folder must have \\groundtruth, \\input, ROI.bmp, temporalROI.txt"""
