@@ -33,6 +33,8 @@ call = subprocess.call
 def main():    
     datasetPath = sys.argv[1]
     binaryRootPath = sys.argv[2]
+    #TODO FIXME XXX Validate args
+    #algorithm = sys.argv[3]
     
     if not isValidRootFolder(datasetPath):
         print('The folder ' + datasetPath + ' is not a valid root folder.');
@@ -42,39 +44,53 @@ def main():
         print('The folder ' + binaryRootPath + ' has been cleaned.');
         shutil.rmtree(binaryRootPath)
     os.mkdir(binaryRootPath)
-    
-    processFolder(datasetPath, binaryRootPath)
 
-def processFolder(datasetPath, binaryRootPath):
+    #categories_subset = set(['baseline','dynamicBackground','badWeather','cameraJitter','intermittentObjectMotion','lowFramerate','nightVideos','PTZ,'shadow','thermal','turbulence'])
+    categories_subset = set(['baseline','dynamicBackground'])
+    algorithms_subset = set(['FrameDifference','StaticFrameDifference'])
+    
+    for algorithm in algorithms_subset:
+        print('---- Running: ' + algorithm)
+        processFolder(datasetPath, binaryRootPath, algorithm, categories_subset)
+
+def processFolder(datasetPath, binaryRootPath, algorithm, categories_subset):
     """Call your executable for all sequences in all categories."""
-    stats = Stats(datasetPath)  #STATS
+    algo_path = algorithm + "_result"
+    os.mkdir(os.path.join(binaryRootPath, algo_path))
+    stats = Stats(datasetPath, os.path.join(binaryRootPath, algo_path))  #STATS
     for category in getDirectories(datasetPath):
+        if not category in categories_subset:
+            print('---- Category: ' + category + ' not in subset... ignoring')
+            continue
         stats.addCategories(category)  #STATS
         
         categoryPath = os.path.join(datasetPath, category)
-        os.mkdir(os.path.join(binaryRootPath, category))
+        os.mkdir(os.path.join(binaryRootPath, algo_path, category))
+        print('rootpath ' + binaryRootPath)
         
         for video in getDirectories(categoryPath):
             videoPath = os.path.join(categoryPath, video)
-            binaryPath = os.path.join(binaryRootPath, category, video)
+            binaryPath = os.path.join(binaryRootPath, algo_path, category, video)
+            print('binarypath ' + binaryPath)
             if isValidVideoFolder(videoPath):
-                processVideoFolder(videoPath, binaryPath)            
+                processVideoFolder(videoPath, binaryPath, algorithm)
                 confusionMatrix = compareWithGroungtruth(videoPath, binaryPath)  #STATS
                 
                 stats.update(category, video, confusionMatrix)  #STATS
         stats.writeCategoryResult(category)  #STATS
+    print('---- Fin: ' + algorithm + ' Escribiendo resultados')
     stats.writeOverallResults()  #STATS
 
-def processVideoFolder(videoPath, binaryPath):
+def processVideoFolder(videoPath, binaryPath, algorithm):
     """Call your executable on a particular sequence."""
     os.mkdir(binaryPath);
     print(videoPath)
     print(binaryPath)
-    retcode = call(['/home/ubuntu/sandbox/frame_difference/build/FrameDifferenceTest', videoPath, binaryPath], shell=False)
+    retcode = call(['/home/ubuntu/sandbox/frame_difference/build/FrameDifferenceTest', videoPath, binaryPath, algorithm], shell=False)
 
 def compareWithGroungtruth(videoPath, binaryPath):
     """Compare your binaries with the groundtruth and return the confusion matrix"""
-    statFilePath = os.path.join(videoPath, 'stats.txt')
+    statFilePath = os.path.join(binaryPath, 'stats.txt')
     deleteIfExists(statFilePath)
 
     retcode = call([os.path.join('exe', 'comparator'),

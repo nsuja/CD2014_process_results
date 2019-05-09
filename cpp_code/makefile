@@ -8,6 +8,7 @@ method:
 
 comparator:
 	g++ -o comparator mainComparator.cpp VideoFolder.cpp Comparator.cpp $(OPENCV) $(CFLAGS)
+	cp -f comparator ../exe/
 
 clean:
 	rm -rf *o comparator method

@@ -22,6 +22,7 @@ class VideoFolder
 
 		const Range getRange() const { return range; }
 		const string getVideoPath() const { return videoPath; }
+		const string getBinaryPath() const { return binaryPath; }
 
 	private:
 		const char sep;

@@ -1,7 +1,7 @@
 __pycache__
 Stats.pyc
-c++ code/comparator
-c++ code/method
-c++ code/config
+cpp_code/comparator
+cpp_code/method
+cpp_code/config
 exe/comparator
 *.sw?

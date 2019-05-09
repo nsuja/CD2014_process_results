@@ -59,8 +59,9 @@ def writeComment(f):
     f.write('#cm NbTruePositive NbFalsePositive NbFalseNegative NbTrueNegative NbErrorShadow\n\n')
 
 class Stats:
-    def __init__(self, path):
+    def __init__(self, path, outpath):
         self.path = path
+        self.outpath = outpath
         self.categories = dict()
 
     def addCategories(self, category):
@@ -76,11 +77,11 @@ class Stats:
         categoryStats = []
 
         categoryTotal = sumListVectors(videoList)
-        with open(self.path + '\\' + category + '\\' + 'stats.txt', 'w') as f:
+        with open(self.outpath + '/' + category + '/' + 'stats.txt', 'w') as f:
             writeComment(f)
             for video, cm in self.categories[category].items():
                 categoryStats.append(getStats(cm))
-                f.write('cm video ' + category + ' ' + video + ' ' + cmToText(cm) + '\n')
+                f.write('cm video ' + category + ' ' + video + ' ' + cmToText(cm) + '/\n')
                 
             f.write('cm category ' + category + ' ' + cmToText(categoryTotal) + '\n\n')
             f.write('\nRecall\t\t\tSpecificity\t\tFPR\t\t\t\tFNR\t\t\t\tPBC\t\t\t\tPrecision\t\tFMeasure')
@@ -91,7 +92,7 @@ class Stats:
         totalPerCategoy = [sumListVectors(list(CMs.values())) for CMs in self.categories.values()]
         categoryStats = {}
         
-        with open(self.path + '\\' + 'stats.txt', 'w') as f:
+        with open(self.outpath + '/' + 'stats.txt', 'w') as f:
             writeComment(f)
             for category in self.categories.keys():
                 videoList = list(self.categories[category].values())

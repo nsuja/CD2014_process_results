@@ -2,6 +2,7 @@
 #include "Comparator.h"
 
 #include <fstream>
+using namespace std;
 
 Comparator::Comparator(const VideoFolder &videoFolder)
 	: videoFolder(videoFolder),
@@ -66,7 +67,8 @@ void Comparator::compare(const BinaryFrame& binary, const GTFrame& gt) {
 }
 
 void Comparator::save() const {
-	const string filePath = videoFolder.getVideoPath() + "stats.txt";
+	const string filePath = videoFolder.getBinaryPath() + "stats.txt";
+	cout << "path: " << filePath <<endl;
 	ofstream f(filePath.c_str(), ios::out | ios::app);
 	if (f.is_open()) {
 		f << "cm: " << tp << ' ' << fp << ' ' << fn << ' ' << tn << ' ' << nbShadowErrors;
