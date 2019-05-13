@@ -25,10 +25,32 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+import time
+import queue
 
 from Stats import Stats
 
+jobs_queue = queue.Queue()
+threads = []
+max_threads = os.cpu_count()
+categories_checkbox = {}
+stats_hash = {}
+stats_lock = threading.Lock()
+
 call = subprocess.call
+
+def job(videoPath, binaryPath, category, video, algorithm):
+    print('['+str(threading.get_ident())+'] Running: '+algorithm+' '+category+' '+video)
+    processVideoFolder(videoPath, binaryPath, algorithm)
+    confusionMatrix = compareWithGroungtruth(videoPath, binaryPath)  #STATS
+    stats_lock.acquire()
+    try:
+        stats_hash[algorithm].update(category, video, confusionMatrix)  #STATS
+    finally:
+        stats_lock.release()
+        print('['+str(threading.get_ident())+'] End')
+
 
 def main():    
     datasetPath = sys.argv[1]
@@ -45,22 +67,98 @@ def main():
         shutil.rmtree(binaryRootPath)
     os.mkdir(binaryRootPath)
 
-    #categories_subset = set(['baseline','dynamicBackground','badWeather','cameraJitter','intermittentObjectMotion','lowFramerate','nightVideos','PTZ,'shadow','thermal','turbulence'])
+    #categories_subset = set(['baseline','dynamicBackground','badWeather','cameraJitter','intermittentObjectMotion','lowFramerate','nightVideos','PTZ','shadow','thermal','turbulence']);
     categories_subset = set(['baseline','dynamicBackground'])
+    for cat in categories_subset:
+        categories_checkbox[cat] = False
+    #algorithms_subset = set(['FrameDifference','SuBSENSE','LOBSTER','IndependentMultimodal'])
     algorithms_subset = set(['FrameDifference','StaticFrameDifference'])
+    #algorithms_subset = set(['SuBSENSE'])
     
     for algorithm in algorithms_subset:
-        print('---- Running: ' + algorithm)
+        print('---- Adding: ' + algorithm)
         processFolder(datasetPath, binaryRootPath, algorithm, categories_subset)
+
+    last_category = ''
+    last_algorithm = ''
+    while(1):
+        try:
+            print('Saco')
+            job_args = jobs_queue.get(False)
+        except queue.Empty:
+            #Termine
+            print('Terminee')
+            for th in threads:
+                th.join()
+            stats_hash[last_algorithm].writeCategoryResult(last_category)  #STATS
+            categories_checkbox[last_category] = True
+            done = True
+            for cat in categories_subset:
+                if(categories_checkbox[cat] != True):
+                    done = False
+                    break
+            if(done == True):
+                #Termine con todas las categorias
+                print('----')
+                print('---- Fin: ' + last_algorithm + ' Escribiendo resultados')
+                print('----')
+                stats_hash[last_algorithm].writeOverallResults()  #STATS
+
+            break
+        else:
+            print('hay')
+            category = job_args[2]
+            algorithm = job_args[4]
+            while(len(threads) >= max_threads):
+                for th in threads:
+                    th.join(0.1)
+                    if(th.is_alive()):
+                        #timeout
+                        continue
+                    else:
+                        threads.remove(th)
+                        print('Termino thread')
+                time.sleep(1)
+            if(last_category != '' and last_category != category):
+                #Tengo que esperar que todo termine
+                print('Cambio de categoria:: Last: '+last_category+' next: '+category)
+                for th in threads:
+                    th.join()
+                stats_hash[last_algorithm].writeCategoryResult(last_category)  #STATS
+                categories_checkbox[last_category] = True
+                done = True
+                for cat in categories_subset:
+                    if(categories_checkbox[cat] != True):
+                        done = False
+                        break
+                if(done == True):
+                    #Termine con todas las categorias
+                    print('----')
+                    print('---- Fin: ' + last_algorithm + ' Escribiendo resultados')
+                    print('----')
+                    stats_hash[last_algorithm].writeOverallResults()  #STATS
+                    for cat in categories_subset:
+                        categories_checkbox[cat] = False
+            last_category = category
+            last_algorithm = algorithm
+            x = threading.Thread(target=job, args=(job_args))
+            print(job_args)
+            threads.append(x)
+            x.start()
+            print(x.ident)
+            print('Thread ' + str(x.ident) + ':: Args: ' + str(job_args))
+
+
 
 def processFolder(datasetPath, binaryRootPath, algorithm, categories_subset):
     """Call your executable for all sequences in all categories."""
     algo_path = algorithm + "_result"
     os.mkdir(os.path.join(binaryRootPath, algo_path))
     stats = Stats(datasetPath, os.path.join(binaryRootPath, algo_path))  #STATS
+    stats_hash[algorithm] = stats;
     for category in getDirectories(datasetPath):
         if not category in categories_subset:
-            print('---- Category: ' + category + ' not in subset... ignoring')
+            #print('---- Category: ' + category + ' not in subset... ignoring')
             continue
         stats.addCategories(category)  #STATS
         
@@ -73,13 +171,15 @@ def processFolder(datasetPath, binaryRootPath, algorithm, categories_subset):
             binaryPath = os.path.join(binaryRootPath, algo_path, category, video)
             print('binarypath ' + binaryPath)
             if isValidVideoFolder(videoPath):
-                processVideoFolder(videoPath, binaryPath, algorithm)
-                confusionMatrix = compareWithGroungtruth(videoPath, binaryPath)  #STATS
-                
-                stats.update(category, video, confusionMatrix)  #STATS
-        stats.writeCategoryResult(category)  #STATS
+                args = [videoPath, binaryPath, category, video, algorithm]
+                jobs_queue.put(args)
+                #processVideoFolder(videoPath, binaryPath, algorithm)
+                #confusionMatrix = compareWithGroungtruth(videoPath, binaryPath)  #STATS
+                #stats.update(category, video, confusionMatrix)  #STATS
+
+        #stats.writeCategoryResult(category)  #STATS
     print('---- Fin: ' + algorithm + ' Escribiendo resultados')
-    stats.writeOverallResults()  #STATS
+    #stats.writeOverallResults()  #STATS
 
 def processVideoFolder(videoPath, binaryPath, algorithm):
     """Call your executable on a particular sequence."""
