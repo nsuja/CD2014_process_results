@@ -30,7 +30,22 @@ def addVectors(lst1, lst2):
 
 def sumListVectors(lst):
     """Calculate the sum of a list of 4-values vector."""
-    return foldl(addVectors, lst, [0, 0, 0, 0, 0])
+    return foldl(addVectors, lst, [0, 0, 0, 0, 0, 0, 0])
+
+def getStats2(cm, elapsed, fps):
+    """Return the usual stats for a confusion matrix."""
+    TP, FP, FN, TN, SE = cm
+
+    recall = TP / (TP + FN)
+    specficity = TN / (TN + FP)
+    fpr = FP / (FP + TN)
+    fnr = FN / (TP + FN)
+    pbc = 100.0 * (FN + FP) / (TP + FP + FN + TN)
+    precision = TP / (TP + FP)
+    fmeasure = 2.0 * (recall * precision) / (recall + precision)
+    
+    return [recall, specficity, fpr, fnr, pbc, precision, fmeasure, elapsed, fps]
+
 
 def getStats(cm):
     """Return the usual stats for a confusion matrix."""
@@ -63,13 +78,19 @@ class Stats:
         self.path = path
         self.outpath = outpath
         self.categories = dict()
+        self.elapsed = dict()
+        self.fps = dict()
 
     def addCategories(self, category):
         if category not in self.categories:
             self.categories[category] = {}
+            self.elapsed[category] = {}
+            self.fps[category] = {}
 
-    def update(self, category, video, confusionMatrix):
+    def update(self, category, video, confusionMatrix, e,fps):
         self.categories[category][video] = confusionMatrix
+        self.elapsed[category][video] = e
+        self.fps[category][video] = fps
 
     def writeCategoryResult(self, category):
         """Write the result for each category."""
@@ -80,12 +101,14 @@ class Stats:
         with open(self.outpath + '/' + category + '/' + 'stats.txt', 'w') as f:
             writeComment(f)
             for video, cm in self.categories[category].items():
-                categoryStats.append(getStats(cm))
+                #categoryStats.append(getStats(cm))
+                categoryStats.append(getStats2(cm,self.elapsed[category][video],self.fps[category][video]))
                 f.write('cm video ' + category + ' ' + video + ' ' + cmToText(cm) + '/\n')
                 
             f.write('cm category ' + category + ' ' + cmToText(categoryTotal) + '\n\n')
-            f.write('\nRecall\t\t\tSpecificity\t\tFPR\t\t\t\tFNR\t\t\t\tPBC\t\t\t\tPrecision\t\tFMeasure')
-            f.write('\n{0:1.10f}\t{1:1.10f}\t{2:1.10f}\t{3:1.10f}\t{4:1.10f}\t{5:1.10f}\t{6:1.10f}'.format(*[mean(z) for z in zip(*categoryStats)]))
+            f.write('\nRecall\t\t\tSpecificity\t\tFPR\t\t\t\tFNR\t\t\t\tPBC\t\t\t\tPrecision\t\tFMeasure\t\t\t\tElapsed\t\t\t\tFPS')
+            #f.write('\n{0:1.10f}\t{1:1.10f}\t{2:1.10f}\t{3:1.10f}\t{4:1.10f}\t{5:1.10f}\t{6:1.10f}'.format(*[mean(z) for z in zip(*categoryStats)]))
+            f.write('\n{0:1.10f}\t{1:1.10f}\t{2:1.10f}\t{3:1.10f}\t{4:1.10f}\t{5:1.10f}\t{6:1.10f}\t{7:1.10f}\t{8:1.10f}'.format(*[mean(z) for z in zip(*categoryStats)]))
         
     def writeOverallResults(self):
         """Write overall results."""
@@ -100,7 +123,8 @@ class Stats:
 
                 categoryTotal = sumListVectors(videoList)
                 for video, cm in self.categories[category].items():
-                    categoryStats[category].append(getStats(cm))
+                    #categoryStats[category].append(getStats(cm))
+                    categoryStats[category].append(getStats2(cm,self.elapsed[category][video],self.fps[category][video]))
                     f.write('cm video ' + category + ' ' + video + ' ' + cmToText(cm) + '\n')
                 f.write('cm category ' + category + ' ' + cmToText(categoryTotal) + '\n\n')
 
@@ -112,13 +136,13 @@ class Stats:
             f.write('\n\ncm overall ' + cmToText(total))
 
             overallStats = []
-            f.write('\n\n\n\n\t\t\tRecall\t\t\tSpecificity\t\tFPR\t\t\t\tFNR\t\t\t\tPBC\t\t\t\tPrecision\t\tFMeasure')
+            f.write('\n\n\n\n\t\t\tRecall\t\t\tSpecificity\t\tFPR\t\t\t\tFNR\t\t\t\tPBC\t\t\t\tPrecision\t\tFMeasure\t\tElapsed\t\tFPS')
             for category, stats in categoryStats.items():
                 overallStats.append(stats)
-                if len(category) > 8:
-                    category = category[:7]
-                f.write('\n{0} :\t{1:1.10f}\t{2:1.10f}\t{3:1.10f}\t{4:1.10f}\t{5:1.10f}\t{6:1.10f}\t{7:1.10f}'.format(category, *stats))
+                if len(category) > 10:
+                    category = category[:9]
+                f.write('\n{0} :\t{1:1.10f}\t{2:1.10f}\t{3:1.10f}\t{4:1.10f}\t{5:1.10f}\t{6:1.10f}\t{7:1.10f}\t{8:1.10f}\t{9:1.10f}'.format(category, *stats))
 
-            f.write('\n\nOverall :\t{0:1.10f}\t{1:1.10f}\t{2:1.10f}\t{3:1.10f}\t{4:1.10f}\t{5:1.10f}\t{6:1.10f}'.format(*[mean(z) for z in zip(*overallStats)]))
+            f.write('\n\nOverall :\t{0:1.10f}\t{1:1.10f}\t{2:1.10f}\t{3:1.10f}\t{4:1.10f}\t{5:1.10f}\t{6:1.10f}\t{7:1.10f}\t{8:1.10f}'.format(*[mean(z) for z in zip(*overallStats)]))
             if len(categoryStats) < 6:
                 f.write('\nYour method will not be visible in the Overall section.\nYou need all 6 categories to appear in the overall section.')

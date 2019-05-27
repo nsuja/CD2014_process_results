@@ -37,19 +37,27 @@ max_threads = os.cpu_count()
 categories_checkbox = {}
 stats_hash = {}
 stats_lock = threading.Lock()
+dataset_path = '/home/ubuntu/datasets/CD2014/'
 
 call = subprocess.call
 
 def job(videoPath, binaryPath, category, video, algorithm):
+    path = dataset_path+'dataset/'+category+'/'+video+'/input/'
+    cmd = '/bin/ls -1 '+path+' | wc -l'
+    count = subprocess.check_output(cmd, shell=True).decode(sys.stdout.encoding).rstrip("\n\r")
     print('['+str(threading.get_ident())+'] Running: '+algorithm+' '+category+' '+video)
+    start = time.time()
     processVideoFolder(videoPath, binaryPath, algorithm)
+    end = time.time()
+    elapsed = end-start
+    fps = int(count)/elapsed
     confusionMatrix = compareWithGroungtruth(videoPath, binaryPath)  #STATS
     stats_lock.acquire()
     try:
-        stats_hash[algorithm].update(category, video, confusionMatrix)  #STATS
+        stats_hash[algorithm].update(category, video, confusionMatrix, elapsed, fps)  #STATS
     finally:
         stats_lock.release()
-        print('['+str(threading.get_ident())+'] End')
+        print('['+str(threading.get_ident())+']['+category+']['+video+'] time: '+(str(elapsed))+' FPS: '+str(fps)+' End')
 
 
 def main():    
@@ -67,13 +75,20 @@ def main():
         shutil.rmtree(binaryRootPath)
     os.mkdir(binaryRootPath)
 
-    #categories_subset = set(['baseline','dynamicBackground','badWeather','cameraJitter','intermittentObjectMotion','lowFramerate','nightVideos','PTZ','shadow','thermal','turbulence']);
-    categories_subset = set(['baseline','dynamicBackground'])
+    categories_subset = set(['baseline','dynamicBackground','badWeather','cameraJitter','intermittentObjectMotion','lowFramerate','nightVideos','PTZ','shadow','thermal','turbulence']);
+    #categories_subset = set(['baseline','dynamicBackground'])
     for cat in categories_subset:
         categories_checkbox[cat] = False
+    #algorithms_subset =set(["AdaptiveBackgroundLearning", "AdaptiveSelectiveBackgroundLearning", "Amber", "CodeBook", "DPAdaptiveMedian", "DPEigenbackground", "DPGrimsonGMM", "DPMean", "DPPratiMediod", "DPTexture", "DPWrenGA", "DPZivkovicAGMM", "FrameDifference", "FuzzyChoquetIntegral", "FuzzySugenoIntegral", "GMG", "IndependentMultimodal", "KDE", "LBAdaptiveSOM", "LBFuzzyAdaptiveSOM", "LBFuzzyGaussian", "LBMixtureOfGaussians", "LBP_MRF", "LBSimpleGaussian", "LOBSTER", "MixtureOfGaussianV1", "MixtureOfGaussianV2", "MultiCue", "MultiLayer", "MyBGS", "PAWCS", "PixelBasedAdaptive Segmenter", "SigmaDelta", "StaticFrameDifference", "SuBSENSE", "T2FGMM_UM", "T2FGMM_UV", "T2FMRF_UM", "T2FMRF_UV", "TwoPoints", "ViBe", "VuMeter", "WeightedMovingMean", "WeightedMovingVariance"]);
+    #algorithms_subset =set(["AdaptiveBackgroundLearning", "AdaptiveSelectiveBackgroundLearning", "CodeBook", "DPAdaptiveMedian", "DPEigenbackground", "DPGrimsonGMM", "DPMean", "DPPratiMediod", "DPTexture", "DPWrenGA", "DPZivkovicAGMM", "FrameDifference", "FuzzyChoquetIntegral", "FuzzySugenoIntegral", "GMG", "IndependentMultimodal", "KDE", "LBAdaptiveSOM", "LBFuzzyAdaptiveSOM", "LBFuzzyGaussian", "LBMixtureOfGaussians", "LBP_MRF", "LBSimpleGaussian", "LOBSTER", "MixtureOfGaussianV1", "MixtureOfGaussianV2", "MultiCue", "MultiLayer", "MyBGS", "PAWCS", "PixelBasedAdaptiveSegmenter", "StaticFrameDifference", "SuBSENSE", "T2FGMM_UV", "T2FMRF_UM", "T2FMRF_UV", "TwoPoints", "ViBe", "VuMeter", "WeightedMovingMean", "WeightedMovingVariance"]);
+
+    algorithms_subset =set(["DPTexture", "LBP_MRF", "KDE", "IndependentMultimodal", "KDE", "LBMixtureOfGaussians",'FrameDifference','SuBSENSE','LOBSTER'])
+
+    #algorithms_subset =set(["MixtureOfGaussianV1"]);
     #algorithms_subset = set(['FrameDifference','SuBSENSE','LOBSTER','IndependentMultimodal'])
-    algorithms_subset = set(['FrameDifference','StaticFrameDifference'])
+    #algorithms_subset = set(['FrameDifference','StaticFrameDifference'])
     #algorithms_subset = set(['SuBSENSE'])
+    #algorithms_subset = set(['FrameDifference']);
     
     for algorithm in algorithms_subset:
         print('---- Adding: ' + algorithm)
